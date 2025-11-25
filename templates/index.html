@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waste Classifier AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- CSS DISATUKAN DI SINI --- */
+        
+        /* Reset & Base Styles */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: #F1F8E9; /* Hijau sangat muda */
+            color: #1B5E20; /* Hijau tua */
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 480px;
+            background: white;
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(46, 125, 50, 0.1);
+            text-align: center;
+        }
+
+        /* Header */
+        header h1 {
+            color: #2E7D32; /* Warna Pokok */
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        header p {
+            color: #81C784;
+            font-size: 0.9rem;
+            margin-bottom: 30px;
+        }
+
+        /* Upload Area */
+        .upload-area {
+            border: 2px dashed #A5D6A7;
+            background-color: #FAFFF9;
+            border-radius: 16px;
+            padding: 40px 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover {
+            background-color: #E8F5E9;
+            border-color: #2E7D32;
+        }
+
+        .upload-area .icon {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+
+        /* Preview & Buttons */
+        .preview-container img {
+            width: 100%;
+            max-height: 300px;
+            object-fit: cover;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #E8F5E9;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+            border: none;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-bottom: 10px;
+        }
+
+        #predict-btn {
+            background-color: #2E7D32;
+            color: white;
+        }
+
+        #predict-btn:hover {
+            background-color: #1B5E20;
+        }
+
+        .secondary {
+            background-color: transparent;
+            color: #81C784;
+        }
+
+        .secondary:hover {
+            color: #2E7D32;
+            background-color: #F1F8E9;
+        }
+
+        /* Result Card */
+        .result-card {
+            margin-top: 30px;
+            background: #E8F5E9;
+            padding: 25px;
+            border-radius: 16px;
+            border-left: 6px solid #2E7D32;
+            text-align: left;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .label-badge {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #2E7D32;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .confidence {
+            font-size: 0.85rem;
+            color: #66BB6A;
+            margin-bottom: 15px;
+        }
+
+        .recommendations h4 {
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+        }
+
+        .recommendations ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        .recommendations li {
+            background: white;
+            margin-bottom: 8px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #388E3C;
+            display: flex;
+            align-items: center;
+        }
+
+        .recommendations li::before {
+            content: "✓";
+            margin-right: 10px;
+            color: #2E7D32;
+            font-weight: bold;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Waste Classifier</h1>
+            <p>Kenali jenis sampahmu, selamatkan bumi.</p>
+        </header>
+
+        <main>
+            <div class="upload-area" id="drop-area">
+                <div class="icon">🌱</div>
+                <h3>Unggah Foto Sampah</h3>
+                <p>Klik atau tarik gambar ke sini</p>
+                <input type="file" id="file-input" accept="image/*" hidden>
+            </div>
+
+            <div class="preview-container" id="preview-container" style="display: none;">
+                <img id="image-preview" src="" alt="Preview">
+                <button id="predict-btn">Analisis Sekarang</button>
+                <button id="reset-btn" class="secondary">Ganti Foto</button>
+            </div>
+
+            <div id="result-section" class="result-card" style="display: none;">
+                <div class="label-badge" id="result-label">Checking...</div>
+                <div class="confidence" id="result-confidence">0%</div>
+                
+                <div class="recommendations">
+                    <h4>💡 Rekomendasi Daur Ulang:</h4>
+                    <ul id="tips-list">
+                        </ul>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        /* --- JAVASCRIPT DISATUKAN DI SINI --- */
+        
+        const dropArea = document.getElementById('drop-area');
+        const fileInput = document.getElementById('file-input');
+        const previewContainer = document.getElementById('preview-container');
+        const imagePreview = document.getElementById('image-preview');
+        const predictBtn = document.getElementById('predict-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const resultSection = document.getElementById('result-section');
+
+        let currentFile = null;
+
+        // Trigger input file saat klik area
+        dropArea.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', function(e) {
+            handleFile(e.target.files[0]);
+        });
+
+        function handleFile(file) {
+            if (file) {
+                currentFile = file;
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    dropArea.style.display = 'none';
+                    previewContainer.style.display = 'block';
+                    resultSection.style.display = 'none';
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        resetBtn.addEventListener('click', () => {
+            currentFile = null;
+            fileInput.value = '';
+            dropArea.style.display = 'block';
+            previewContainer.style.display = 'none';
+            resultSection.style.display = 'none';
+        });
+
+        predictBtn.addEventListener('click', async () => {
+            if (!currentFile) return;
+
+            predictBtn.innerText = "Menganalisis...";
+            predictBtn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('file', currentFile);
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    // Tampilkan Hasil
+                    document.getElementById('result-label').innerText = data.label;
+                    document.getElementById('result-confidence').innerText = `Confidence: ${data.confidence}`;
+                    
+                    const tipsList = document.getElementById('tips-list');
+                    tipsList.innerHTML = ''; // Kosongkan list lama
+                    data.tips.forEach(tip => {
+                        const li = document.createElement('li');
+                        li.innerText = tip;
+                        tipsList.appendChild(li);
+                    });
+
+                    resultSection.style.display = 'block';
+                }
+
+            } catch (error) {
+                console.error(error);
+                alert("Terjadi kesalahan koneksi.");
+            } finally {
+                predictBtn.innerText = "Analisis Sekarang";
+                predictBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
